@@ -17,6 +17,8 @@
  *
  */
 
+#include <errno.h>
+#include <pthread.h>
 #include <sched.h>
 #include <stdio.h>
 #include <unistd.h>
@@ -28,23 +30,20 @@
 int go_realtime(void)
 {
 	int max_pri;
-	struct sched_param sp;
-
-	if (sched_getparam(0, &sp)) {
-		perror("sched_getparam");
-		return -1;
-	}
+	const struct sched_param sp = {
+		.sched_priority = REALTIME_PRIORITY,
+	};
 
 	max_pri = sched_get_priority_max(SCHED_FIFO);
-	sp.sched_priority = REALTIME_PRIORITY;
 
 	if (sp.sched_priority > max_pri) {
 		fprintf(stderr, "Invalid priority (maximum %d)\n", max_pri);
 		return -1;
 	}
 
-	if (sched_setscheduler(0, SCHED_FIFO, &sp)) {
-		perror("sched_setscheduler");
+	errno = pthread_setschedparam(pthread_self(), SCHED_FIFO, &sp);
+	if (errno) {
+		perror("pthread_setschedparam");
 		return -1;
 	}
 
